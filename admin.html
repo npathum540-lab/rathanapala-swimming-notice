@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Admin | Notice Board</title>
+<style>
+:root{--navy:#092b4c;--blue:#087ca8;--pale:#eaf7fb;--line:#d9e7ee;--ink:#17334a;--muted:#668092}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Arial,"Noto Sans Sinhala",sans-serif;background:linear-gradient(135deg,#eaf7fb,#f7fbff);color:var(--ink);display:grid;place-items:center;padding:20px}
+.card{width:min(100%,520px);background:white;border:1px solid var(--line);border-radius:24px;padding:clamp(22px,5vw,36px);box-shadow:0 18px 55px #123c5915}
+.brand{font-size:12px;letter-spacing:1.3px;color:var(--blue);font-weight:800}.title{font-size:28px;color:var(--navy);margin:10px 0 6px}.sub{color:var(--muted);line-height:1.6;margin:0 0 24px;font-size:14px}
+label{display:block;font-weight:700;margin:16px 0 8px}input,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:14px;font:inherit;font-size:16px;outline:none;background:#fbfdff}input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #087ca81b}textarea{min-height:150px;resize:vertical;line-height:1.6}
+button{border:0;border-radius:12px;background:var(--navy);color:white;font-size:16px;font-weight:800;padding:14px 18px;width:100%;margin-top:18px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.secondary{background:#eaf2f6;color:var(--navy);margin-top:10px}.row{display:flex;gap:10px;align-items:center;margin-top:14px}.row input{width:20px;height:20px}.row label{margin:0;font-size:14px}.status{margin-top:14px;font-size:14px;line-height:1.5;color:var(--muted);min-height:22px}.hidden{display:none!important}.preview{border:1px solid #f1d58a;background:#fff8df;color:#704b00;padding:14px;border-radius:13px;margin-top:18px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.foot{font-size:12px;color:var(--muted);text-align:center;margin-top:24px}
+</style></head><body>
+<main class="card">
+ <div class="brand">SAPUGODA SRI RATHANAPALA VIDYALAYA</div>
+ <h1 class="title">Admin Notice Board</h1>
+ <p class="sub">ප්‍රධාන වෙබ් අඩවියේ Notice Board එක පමණක් මෙතැනින් යාවත්කාලීන කළ හැකියි.</p>
+ <section id="loginPanel">
+  <label for="password">Admin Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Password එක ඇතුළත් කරන්න">
+  <button id="loginBtn">Login</button><div class="status" id="loginStatus" role="status"></div>
+ </section>
+ <section id="editorPanel" class="hidden">
+  <label for="message">Notice Board පණිවිඩය</label>
+  <textarea id="message" maxlength="1200" placeholder="උදා: අද පිහිනුම් තටාකය විවෘතයි. අද දින වේලාවන්... "></textarea>
+  <div class="row"><input id="visible" type="checkbox" checked><label for="visible">ප්‍රධාන වෙබ් අඩවියේ Notice Board එක පෙන්වන්න</label></div>
+  <div class="preview" id="preview">ඔබගේ පණිවිඩය මෙතැන පෙරදසුනක් ලෙස පෙන්වයි.</div>
+  <button id="publishBtn">Publish / Update Notice</button>
+  <button class="secondary" id="logoutBtn">Logout</button>
+  <div class="status" id="saveStatus" role="status"></div>
+ </section>
+ <div class="foot">Notice Board management only · Secure server-side password check</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);let token='';
+function status(id,msg){$(id).textContent=msg;}
+$('message').addEventListener('input',()=>{$('preview').textContent=$('message').value.trim()||'ඔබගේ පණිවිඩය මෙතැන පෙරදසුනක් ලෙස පෙන්වයි.'});
+$('loginBtn').addEventListener('click',login);$('password').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+async function login(){const password=$('password').value;if(!password){status('loginStatus','Password එක ඇතුළත් කරන්න.');return;}$('loginBtn').disabled=true;status('loginStatus','පරීක්ෂා කරමින්...');try{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Login අසාර්ථකයි.');token=d.token;$('loginPanel').classList.add('hidden');$('editorPanel').classList.remove('hidden');status('loginStatus','');await loadNotice();}catch(e){status('loginStatus',e.message||'Login අසාර්ථකයි.');}finally{$('loginBtn').disabled=false;}}
+async function loadNotice(){try{const r=await fetch('/api/notice',{cache:'no-store'});if(!r.ok)return;const d=await r.json();$('message').value=d.message||'';$('visible').checked=d.visible!==false;$('preview').textContent=d.message||'ඔබගේ පණිවිඩය මෙතැන පෙරදසුනක් ලෙස පෙන්වයි.';}catch{}}
+$('publishBtn').addEventListener('click',async()=>{const message=$('message').value.trim();if($('visible').checked&&!message){status('saveStatus','පෙන්වීමට පණිවිඩයක් ලියන්න.');return;}$('publishBtn').disabled=true;status('saveStatus','යාවත්කාලීන කරමින්...');try{const r=await fetch('/api/notice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({message,visible:$('visible').checked})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Update අසාර්ථකයි.');status('saveStatus','සාර්ථකයි! ප්‍රධාන වෙබ් අඩවියේ Notice Board එක යාවත්කාලීන වුණා.');}catch(e){status('saveStatus',e.message||'Update අසාර්ථකයි. නැවත Login වෙන්න.');if(e.message==='Unauthorized')logout();}finally{$('publishBtn').disabled=false;}});
+function logout(){token='';$('password').value='';$('editorPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');status('loginStatus','ඔබ Logout වුණා.');}
+$('logoutBtn').addEventListener('click',logout);
+</script></body></html>
